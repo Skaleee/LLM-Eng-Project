@@ -18,3 +18,10 @@ then
 4. optional: install deepseek as in project module:  
 `pip install -e DeepSeek-VL2`
 5. Replace the `inference.py` from the DeepSeek Repo with the one from this project and try running it. 
+## OlMoE doc
+1. Need a modern torch
+2. probably `pip install numpy<2`
+3. `pip install optimum`
+4. `pip install gptqmodel --no-build-isolation` or auto-gtpq
+5. clone `https://github.com/Skaleee/transformers` and install with
+`pip install -e /PATH_TO_CLONED_REPO/transformers/`
