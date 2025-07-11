@@ -102,7 +102,7 @@ from torch.utils.data import DataLoader
 dataloader = DataLoader(dataset, batch_size=batch_size)
 
 # === Run evaluation for top1 routing ===
-routing_controller = RoutingControllerSimple(model, temperature=0.000000001)
+routing_controller = RoutingControllerSimple(model, temperature=0.1)
 
 print("\nEvaluating with Top-1 Routing...")
 routing_controller.patch_top1()
