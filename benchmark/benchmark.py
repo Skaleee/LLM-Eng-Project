@@ -66,17 +66,37 @@ def evaluate_perplexity(model, tokenizer, dataset, routing, temp, model_name, ba
     subset = dataset.select(range(100))  # or 10 if you want parity
 
     # Prepare dataloader with padding
-    dataloader = DataLoader(
-        subset,
-        batch_size=batch_size,
-        collate_fn=lambda batch: tokenizer(
-            [sample["text"].strip() for sample in batch if sample["text"].strip()],
-            return_tensors="pt",
-            truncation=True,
-            max_length=512,
-            padding=True
+    if type(model) is not PhimoeForCausalLM:
+        dataloader = DataLoader(
+            subset,
+            batch_size=batch_size,
+            collate_fn=lambda batch: tokenizer(
+                [sample["text"].strip() for sample in batch if sample["text"].strip()],
+                return_tensors="pt",
+                truncation=True,
+                max_length=512,
+                padding=True
+            )
         )
-    )
+    else:
+        dataloader = DataLoader(
+            subset,
+            batch_size=batch_size,
+            collate_fn=lambda batch: tokenizer(
+                [
+                    tokenizer.apply_chat_template(
+                        [{"role": "user", "content": sample["text"].strip()} for sample in batch if sample["text"].strip()],
+                        tokenize=False,
+                        add_generation_prompt=True
+                    )
+                    for sample in batch if sample["text"].strip()
+                ],
+                return_tensors="pt",
+                truncation=True,
+                max_length=512,
+                padding=True
+            )
+        )
 
     for batch in dataloader:
         input_ids = batch["input_ids"].to(model.device)
@@ -134,8 +154,18 @@ def evaluate_translation(model, tokenizer, dataset, routing, temp, model_name, b
 
     tokenizer.padding_side = "left"
     tokenizer.truncation_side = "left"
+
     # Tokenize all prompts in batch (padding/truncation needed)
-    tokenized = tokenizer(prompts, return_tensors="pt", padding=True, truncation=True, max_length=512)
+    if type(model) is not PhimoeForCausalLM:
+        tokenized = tokenizer(prompts, return_tensors="pt", padding=True, truncation=True, max_length=512)
+    else:
+        messages = [tokenizer.apply_chat_template(
+                    [{"role": "user", "content": prompt}],
+                    tokenize=False,
+                    add_generation_prompt=True
+                )
+                for prompt in prompts]
+        tokenized = tokenizer(messages, return_tensors="pt", padding=True, truncation=True, max_length=512)
 
     # Create DataLoader manually (we do batching ourselves here)
     input_ids = tokenized["input_ids"]
@@ -197,13 +227,27 @@ def evaluate_summary(model, tokenizer, dataset, routing, temp, model_name, batch
         prompts = [f"Summarize the following text such that it is semantically correct: {text}" for text in texts]
 
         # Tokenize batch
-        inputs = tokenizer(
-            prompts,
-            return_tensors="pt",
-            padding=True,
-            truncation=True,
-            max_length=512
-        ).to(model.device)
+        if type(model) is not PhimoeForCausalLM:
+            inputs = tokenizer(
+                prompts,
+                return_tensors="pt",
+                padding=True,
+                truncation=True,
+                max_length=512
+            ).to(model.device)
+        else:
+            messages = [tokenizer.apply_chat_template(
+                [{"role": "user", "content": prompt}],
+                tokenize=False,
+                add_generation_prompt=True
+            ) for prompt in prompts]
+            inputs = tokenizer(
+                messages,
+                return_tensors="pt",
+                padding=True,
+                truncation=True,
+                max_length=512
+            ).to(model.device)
 
         # Generate summaries
         outputs = model.generate(
@@ -266,10 +310,6 @@ model_path = "Qwen/Qwen3-30B-A3B"
 config = Qwen3MoeConfig.from_pretrained(model_path)
 # Initialize empty model (no weights yet) to calculate device map
 tokenizer = AutoTokenizer.from_pretrained(model_path)
-
-# Step 2: Initialize model with empty weights
-with init_empty_weights():
-    model = Qwen3MoeForCausalLM(config)
 
 # Step 4: Load actual weights with correct map
 model = Qwen3MoeForCausalLM.from_pretrained(
