@@ -63,10 +63,10 @@ def evaluate_perplexity(model, tokenizer, dataset, routing, temp, model_name, ba
     log_likelihoods = []
 
     # Subset for speed
-    subset = dataset.select(range(100))  # or 10 if you want parity
+    subset = dataset.select(range(400))  # or 10 if you want parity
 
     # Prepare dataloader with padding
-    if type(model) is not PhimoeForCausalLM:
+    if type(model) is Qwen3MoeForCausalLM:
         dataloader = DataLoader(
             subset,
             batch_size=batch_size,
@@ -98,7 +98,7 @@ def evaluate_perplexity(model, tokenizer, dataset, routing, temp, model_name, ba
             )
         )
 
-    for batch in dataloader:
+    for batch in tqdm(dataloader):
         input_ids = batch["input_ids"].to(model.device)
         attention_mask = batch["attention_mask"].to(model.device)
         labels = input_ids.clone()
@@ -135,7 +135,7 @@ def evaluate_perplexity(model, tokenizer, dataset, routing, temp, model_name, ba
 
         log_likelihoods.extend(per_sample_loss.tolist())
 
-    save(model_name, 'preplexity', temp, input_ids, labels, outputs.logits)
+    # save(model_name, 'preplexity', temp, input_ids, labels, outputs.logits)
     
     # Final perplexity
     mean_nll = torch.tensor(log_likelihoods).mean()
@@ -148,7 +148,7 @@ def evaluate_translation(model, tokenizer, dataset, routing, temp, model_name, b
     references, predictions = [], []
 
     # Select a subset and prepare prompts
-    subset = dataset["train"].select(range(100))
+    subset = dataset["train"].select(range(400))
     prompts = [f"{ex['instruction']}\n{ex['input']}" for ex in subset]
     gold_outputs = [ex['output'] for ex in subset]
 
@@ -156,7 +156,7 @@ def evaluate_translation(model, tokenizer, dataset, routing, temp, model_name, b
     tokenizer.truncation_side = "left"
 
     # Tokenize all prompts in batch (padding/truncation needed)
-    if type(model) is not PhimoeForCausalLM:
+    if type(model) is Qwen3MoeForCausalLM:
         tokenized = tokenizer(prompts, return_tensors="pt", padding=True, truncation=True, max_length=512)
     else:
         messages = [tokenizer.apply_chat_template(
@@ -193,7 +193,7 @@ def evaluate_translation(model, tokenizer, dataset, routing, temp, model_name, b
         predictions.extend(decoded_preds)
         references.extend([[ref] for ref in decoded_refs])  # BLEU/TER expects list of lists
 
-    save(model_name, 'translation', temp, input_ids, labels, outputs)
+    # save(model_name, 'translation', temp, input_ids, labels, outputs)
     
     # Compute evaluation metrics
     bleu_score = bleu.compute(predictions=predictions, references=references)["score"]
@@ -212,7 +212,7 @@ def evaluate_summary(model, tokenizer, dataset, routing, temp, model_name, batch
     tokenizer.padding_side = "left"
 
     # Select a subset and convert to HuggingFace Dataset if not already
-    data = dataset["train"].select(range(100))
+    data = dataset["train"].select(range(400))
 
     references = []
     predictions = []
@@ -227,7 +227,7 @@ def evaluate_summary(model, tokenizer, dataset, routing, temp, model_name, batch
         prompts = [f"Summarize the following text such that it is semantically correct: {text}" for text in texts]
 
         # Tokenize batch
-        if type(model) is not PhimoeForCausalLM:
+        if type(model) is Qwen3MoeForCausalLM:
             inputs = tokenizer(
                 prompts,
                 return_tensors="pt",
@@ -264,7 +264,7 @@ def evaluate_summary(model, tokenizer, dataset, routing, temp, model_name, batch
         tokenized_refs = tokenizer(targets, return_tensors="pt", padding=True, truncation=True, max_length=512)
         labels = tokenized_refs["input_ids"]
 
-    save(model_name, 'summary', temp, inputs['input_ids'], labels, outputs)
+    # save(model_name, 'summary', temp, inputs['input_ids'], labels, outputs)
 
     # Compute metrics
     rouge_scores = rouge.compute(predictions=predictions, references=references)
@@ -301,9 +301,9 @@ summaries = load_dataset("ProCreations/simple-summaries")
 datasets = [wikitext, translations, summaries]
 print("Datasets loaded ...")
 
-T = [0.001, 0.01, 0.1, 0.5, 1, 2, 5]
+T = [0.001, 0.01, 0.1, 0.3, 0.5, 0.7, 1, 5]
 
-# Model path
+# # Model path
 model_path = "Qwen/Qwen3-30B-A3B"
 
 # Load config
@@ -328,7 +328,7 @@ torch.cuda.empty_cache()
 
 torch.set_printoptions(profile='simple')
 device = torch.device("cuda:0")
-model_path = "allenai/OLMoE-1B-7B-0924" #"allenai/OLMoE-1B-7B-0924" 
+model_path = "allenai/OLMoE-1B-7B-0924-Instruct" #"allenai/OLMoE-1B-7B-0924" 
 config = OlmoeConfig.from_pretrained(model_path,num_experts_per_tok=4)
 model = OlmoeForCausalLM.from_pretrained(model_path,config=config,
                                          device_map={"": device},
