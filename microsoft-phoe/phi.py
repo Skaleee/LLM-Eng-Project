@@ -7,15 +7,18 @@ from accelerate import init_empty_weights, infer_auto_device_map
 logging.set_verbosity_info()
 device = torch.device("cuda:0")
 # Model path
-model_path = "microsoft/Phi-mini-MoE-instruct"
+model_path = "microsoft/Phi-3.5-MoE-instruct"
 
 # Load config
 config = PhimoeConfig.from_pretrained(model_path)
-model = PhimoeForCausalLM.from_pretrained(model_path,config=config,
-                                         device_map={"": device},
-                                         torch_dtype=torch.float16,
-                                         )
 tokenizer = AutoTokenizer.from_pretrained(model_path)
+with init_empty_weights():
+    model = PhimoeForCausalLM(config)
+
+model = PhimoeForCausalLM.from_pretrained(model_path,
+                                        device_map="auto",
+                                        torch_dtype=torch.bfloat16,
+                                    )
 model.eval()
 
 if "inputs" in globals():
