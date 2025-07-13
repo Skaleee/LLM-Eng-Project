@@ -1,18 +1,5 @@
 {
   "Qwen/Qwen3-30B-A3B": {
-    "0.001": {
-      "Perplexity": 267.9029541015625,
-      "Translation": {
-        "BLEU": 4.835940003285356,
-        "METEOR": 0.19361201810412726
-      },
-      "Summarization": {
-        "rouge1": 0.2698252281114777,
-        "rouge2": 0.1311683774282209,
-        "rougeL": 0.1801315912730495,
-        "rougeLsum": 0.20850873758308103
-      }
-    },
     "0.01": {
       "Perplexity": 78.45303344726562,
       "Translation": {
@@ -119,19 +106,6 @@
     }
   },
   "allenai/OLMoE-1B-7B-0924-Instruct": {
-    "0.001": {
-      "Perplexity": 8871.7275390625,
-      "Translation": {
-        "BLEU": 4.565912221441891,
-        "METEOR": 0.2094319113678728
-      },
-      "Summarization": {
-        "rouge1": 0.2555218950660647,
-        "rouge2": 0.12366110300727046,
-        "rougeL": 0.17332674803777132,
-        "rougeLsum": 0.20153607060573273
-      }
-    },
     "0.01": {
       "Perplexity": 30.638750076293945,
       "Translation": {
@@ -238,19 +212,6 @@
     }
   },
   "microsoft/Phi-3.5-MoE-instruct": {
-    "0.001": {
-      "Perplexity": 4616.998046875,
-      "Translation": {
-        "BLEU": 4.7224923783511485,
-        "METEOR": 0.20311684934081065
-      },
-      "Summarization": {
-        "rouge1": 0.24943581583514146,
-        "rouge2": 0.10946333461025037,
-        "rougeL": 0.16298743056468185,
-        "rougeLsum": 0.18963406564296403
-      }
-    },
     "0.01": {
       "Perplexity": 4616.998046875,
       "Translation": {

@@ -301,7 +301,7 @@ summaries = load_dataset("ProCreations/simple-summaries")
 datasets = [wikitext, translations, summaries]
 print("Datasets loaded ...")
 
-T = [0.001, 0.01, 0.1, 0.3, 0.5, 0.7, 1, 5]
+T = [0.01, 0.1, 0.3, 0.5, 0.7, 1, 5]
 
 # Model path
 model_path = "Qwen/Qwen3-30B-A3B"
