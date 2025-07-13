@@ -1,5 +1,7 @@
 import os
 import json
+import matplotlib
+matplotlib.use('Agg')  # Ensure it works in non-GUI environments
 import matplotlib.pyplot as plt
 
 # --- List of JSON filenames ---
@@ -43,14 +45,18 @@ for json_file in json_files:
     print(f"📁 Processing: {json_file} → {folder_name}")
 
     # --- Loop through each model ---
-    for with5 in [True,False]:
-
+    for with5 in [True, False]:
         for model_name, results in data.items():
-            # Skip temperature "5"
+            # Filter temperatures
             if with5:
                 temp_pairs = [(k, float(k)) for k in results.keys() if k != "0"]
             else:
                 temp_pairs = [(k, float(k)) for k in results.keys() if k != "5" and k != "0"]
+
+            if not temp_pairs:
+                print(f"⚠️ Skipping {model_name} — no valid temperature points with filter (with5={with5})")
+                continue
+
             temp_pairs.sort(key=lambda x: x[1])
             temperature_keys, temperatures = zip(*temp_pairs)
 
@@ -77,10 +83,10 @@ for json_file in json_files:
 
             # --- Helper to plot any metric ---
             def plot_metric(values, label, ylabel, suffix, round_fmt):
-                color = metric_colors[label]  # consistent color by metric
+                color = metric_colors[label]
 
                 plt.figure()
-                plt.plot(temperatures, values, marker="o", color=color, label=label)
+                plt.plot(temperatures, values, marker="o", color=color, label="Probabilistic Routing")
 
                 if "0" in results:
                     if label == "Perplexity":
@@ -92,13 +98,13 @@ for json_file in json_files:
                     else:
                         baseline = results["0"]["Summarization"][suffix]
 
-                    # Red "No Routing" line
+                    # Red "Default Routing" line
                     plt.axhline(
                         y=baseline,
                         color="red",
                         linestyle="--",
                         linewidth=1,
-                        label=f'No Routing: {round_fmt.format(baseline)}'
+                        label=f'Default Routing: {round_fmt.format(baseline)}'
                     )
 
                 plt.title(f"{model_name} - {label} vs Temperature")
@@ -106,10 +112,9 @@ for json_file in json_files:
                 plt.ylabel(ylabel)
                 plt.grid(True)
                 plt.legend()
-                if with5:
-                    filename = f"{clean_model_name}_{suffix.lower()}_with5.png"
-                else:
-                    filename = f"{clean_model_name}_{suffix.lower()}.png"
+
+                suffix_label = f"{suffix.lower()}_with5.png" if with5 else f"{suffix.lower()}.png"
+                filename = f"{clean_model_name}_{suffix_label}"
                 plt.savefig(os.path.join(output_dir, filename))
                 plt.close()
 
@@ -122,6 +127,6 @@ for json_file in json_files:
             plot_metric(rougel_scores, "ROUGE-L", "ROUGE-L Score", "rougeL", "{:.3f}")
             plot_metric(rougelsum_scores, "ROUGE-Lsum", "ROUGE-Lsum Score", "rougeLsum", "{:.3f}")
 
-            print(f"✅ Plots saved for model: {model_name}")
+            print(f"✅ Plots saved for model: {model_name} (with5={with5})")
 
 print("🎉 All files processed and all metrics plotted.")
