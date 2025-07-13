@@ -56,7 +56,6 @@ def evaluation_loop(model, tokenizer, datasets, temperatures, results, model_nam
 #     print(f"Perplexity: {perplexity:.2f}")
 
 from torch.utils.data import DataLoader
-from transformers import DataCollatorForLanguageModeling
 
 def evaluate_perplexity(model, tokenizer, dataset, routing, temp, model_name, batch_size=32):
     model.eval()
@@ -65,7 +64,8 @@ def evaluate_perplexity(model, tokenizer, dataset, routing, temp, model_name, ba
     # Subset for speed
     subset = dataset.select(range(400))  # or 10 if you want parity
 
-    # Prepare dataloader with padding
+    # Prepare dataloader
+    # Tokenize all prompts in batch
     if type(model) is Qwen3MoeForCausalLM:
         dataloader = DataLoader(
             subset,
@@ -155,7 +155,7 @@ def evaluate_translation(model, tokenizer, dataset, routing, temp, model_name, b
     tokenizer.padding_side = "left"
     tokenizer.truncation_side = "left"
 
-    # Tokenize all prompts in batch (padding/truncation needed)
+    # Tokenize all prompts in batch
     if type(model) is Qwen3MoeForCausalLM:
         tokenized = tokenizer(prompts, return_tensors="pt", padding=True, truncation=True, max_length=512)
     else:
@@ -226,7 +226,7 @@ def evaluate_summary(model, tokenizer, dataset, routing, temp, model_name, batch
 
         prompts = [f"Summarize the following text such that it is semantically correct: {text}" for text in texts]
 
-        # Tokenize batch
+        # Tokenize all prompts in batch
         if type(model) is Qwen3MoeForCausalLM:
             inputs = tokenizer(
                 prompts,
@@ -303,15 +303,13 @@ print("Datasets loaded ...")
 
 T = [0.001, 0.01, 0.1, 0.3, 0.5, 0.7, 1, 5]
 
-# # Model path
+# Model path
 model_path = "Qwen/Qwen3-30B-A3B"
 
-# Load config
+# Load and evaluate qwen3moe
 config = Qwen3MoeConfig.from_pretrained(model_path)
-# Initialize empty model (no weights yet) to calculate device map
 tokenizer = AutoTokenizer.from_pretrained(model_path)
 
-# Step 4: Load actual weights with correct map
 model = Qwen3MoeForCausalLM.from_pretrained(
     model_path,
     config=config,
@@ -326,14 +324,17 @@ del model
 gc.collect()
 torch.cuda.empty_cache()
 
+# Load and evaluate olmoe
 torch.set_printoptions(profile='simple')
 device = torch.device("cuda:0")
 model_path = "allenai/OLMoE-1B-7B-0924-Instruct" #"allenai/OLMoE-1B-7B-0924" 
 config = OlmoeConfig.from_pretrained(model_path,num_experts_per_tok=4)
-model = OlmoeForCausalLM.from_pretrained(model_path,config=config,
-                                         device_map={"": device},
-                                         torch_dtype=torch.float16,
-                                         )
+model = OlmoeForCausalLM.from_pretrained(
+    model_path,
+    config=config,
+    device_map={"": device},
+    torch_dtype=torch.float16,
+)
 tokenizer = AutoTokenizer.from_pretrained(model_path)
 model.eval()
 
@@ -343,22 +344,20 @@ del model
 gc.collect()
 torch.cuda.empty_cache()
 
+# Load and evaluate phi moe
 model_path = "microsoft/Phi-3.5-MoE-instruct"
-
-# Load config
 config = PhimoeConfig.from_pretrained(model_path)
 tokenizer = AutoTokenizer.from_pretrained(model_path)
-with init_empty_weights():
-    model = PhimoeForCausalLM(config)
-
-model = PhimoeForCausalLM.from_pretrained(model_path,
-                                        config=config,
-                                        device_map="auto",
-                                        torch_dtype=torch.bfloat16,
-                                    )
+model = PhimoeForCausalLM.from_pretrained(
+    model_path,
+    config=config,
+    device_map="auto",
+    torch_dtype=torch.bfloat16,
+)
 model.eval()
 
 evaluation_loop(model, tokenizer, datasets, T, results, model_path)
 
+# Save results to JSON file
 with open("moe_eval_results.json", "w") as f:
     json.dump(results, f, indent=2)
