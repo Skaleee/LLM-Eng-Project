@@ -63,7 +63,7 @@ def evaluate_perplexity(model, tokenizer, dataset, routing, temp, model_name, ba
     log_likelihoods = []
 
     # Subset for speed
-    subset = dataset.select(range(10))  # or 10 if you want parity
+    subset = dataset.select(range(400))  # or 10 if you want parity
 
     # Prepare dataloader with padding
     if type(model) is Qwen3MoeForCausalLM:
@@ -135,7 +135,7 @@ def evaluate_perplexity(model, tokenizer, dataset, routing, temp, model_name, ba
 
         log_likelihoods.extend(per_sample_loss.tolist())
 
-    save(model_name, 'preplexity', temp, input_ids, labels, outputs.logits)
+    # save(model_name, 'preplexity', temp, input_ids, labels, outputs.logits)
     
     # Final perplexity
     mean_nll = torch.tensor(log_likelihoods).mean()
@@ -148,7 +148,7 @@ def evaluate_translation(model, tokenizer, dataset, routing, temp, model_name, b
     references, predictions = [], []
 
     # Select a subset and prepare prompts
-    subset = dataset["train"].select(range(10))
+    subset = dataset["train"].select(range(400))
     prompts = [f"{ex['instruction']}\n{ex['input']}" for ex in subset]
     gold_outputs = [ex['output'] for ex in subset]
 
@@ -193,7 +193,7 @@ def evaluate_translation(model, tokenizer, dataset, routing, temp, model_name, b
         predictions.extend(decoded_preds)
         references.extend([[ref] for ref in decoded_refs])  # BLEU/TER expects list of lists
 
-    save(model_name, 'translation', temp, input_ids, labels, outputs)
+    # save(model_name, 'translation', temp, input_ids, labels, outputs)
     
     # Compute evaluation metrics
     bleu_score = bleu.compute(predictions=predictions, references=references)["score"]
@@ -212,7 +212,7 @@ def evaluate_summary(model, tokenizer, dataset, routing, temp, model_name, batch
     tokenizer.padding_side = "left"
 
     # Select a subset and convert to HuggingFace Dataset if not already
-    data = dataset["train"].select(range(10))
+    data = dataset["train"].select(range(400))
 
     references = []
     predictions = []
@@ -264,7 +264,7 @@ def evaluate_summary(model, tokenizer, dataset, routing, temp, model_name, batch
         tokenized_refs = tokenizer(targets, return_tensors="pt", padding=True, truncation=True, max_length=512)
         labels = tokenized_refs["input_ids"]
 
-    save(model_name, 'summary', temp, inputs['input_ids'], labels, outputs)
+    # save(model_name, 'summary', temp, inputs['input_ids'], labels, outputs)
 
     # Compute metrics
     rouge_scores = rouge.compute(predictions=predictions, references=references)
